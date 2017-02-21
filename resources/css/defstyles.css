@@ -1,0 +1,9 @@
+body, html, #app {
+    height: 100%;
+}
+
+body {
+    margin: 0px;
+}
+
+* { box-sizing: border-box }
