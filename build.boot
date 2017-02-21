@@ -79,6 +79,8 @@
    reload {:on-jsload   (mk-ns-symbol [+name+ 'core] 'main)}
    repl   {:eval '(set! *print-length* 20)}
    jar    {:main main-ns}
+   garden {:styles-var (mk-ns-symbol [+name+ 'styles] 'base)
+           :output-to "css/styles.css"}
    aot    {:namespace #{main-ns}}))
 
 (deftask dev []
@@ -92,8 +94,7 @@
    (reload)
    (cljs :optimizations :none
          :source-map true)
-   (garden :styles-var (mk-ns-symbol [+name+ 'styles] 'base)
-           :output-to "css/styles.css")
+   (garden)
    (target)))
 
 (deftask build-server []
