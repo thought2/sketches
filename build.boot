@@ -112,6 +112,7 @@
 (deftask build []
   (comp
    (build-client)
-   (build-server)))
+   (build-server)
+   ;;(target)))
 
 
