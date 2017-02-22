@@ -4,4 +4,4 @@
               [ring.adapter.jetty       :refer [run-jetty]]))
 
 (defn -main [& [port]]
-  (run-jetty handler {:port (if port (Integer. port) 5000)}))
+  (run-jetty handler {:port (Integer. (or port (System/getenv "PORT") 5000))}))
