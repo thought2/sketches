@@ -113,6 +113,7 @@
   (comp
    (build-client)
    (build-server)
-   ;;(target)))
+   (target)
+   ))
 
 
