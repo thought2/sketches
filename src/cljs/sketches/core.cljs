@@ -1,8 +1,11 @@
 (ns sketches.core
-    (:require [reagent.core :as r]))
+  (:require [reagent.core :as r]
+            [sketches.book01 :as b1]))
 
 (defn Page []
-  [:div "hello sketches!"])
+  [:div 
+   (for [{:keys [compo]} b1/sketches]
+     [compo])])
 
 (defn main []
   (r/render [Page]
@@ -10,3 +13,4 @@
 
 (defn init []
   (main))
+

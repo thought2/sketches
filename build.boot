@@ -26,6 +26,7 @@
                   [ring                          "1.5.0"]
                   [http-kit                      "2.1.18"]
                   [compojure                     "1.5.1"]
+                  #_[ring-middleware-format        "0.7.2"]
                   [enlive                        "1.1.6"]])
 
 (def front      '[[markdown-clj                  "0.9.89"]
