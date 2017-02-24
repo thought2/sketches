@@ -33,8 +33,8 @@
           (-> (u/ajax {:uri "ls"
                        :method :post
                        :params {:dir dir}})
-              (p/then (partial map #(u/load-img "/img" {:path %
-                                                        :width 300})))
+              (p/then (partial map #(u/load-img "img" {:path %
+                                                       :width 300})))
               (p/then #(p/all %))
               (p/then #(swap! state01 assoc :imgs %)) 
               (p/catch #(u/log (clj->js %)))))
