@@ -14,7 +14,7 @@
 
 (defn read-index-file [dir]
   (-> (io/resource (str dir "/index.txt"))
-      io/file slurp 
+      slurp 
       (s/split-lines)))
 
 (defn get-file-list [dir]
