@@ -51,11 +51,14 @@
 (defn mk-elem [name]
   (.createElement js/document name))
 
+(def url-encode #(.encodeURIComponent js/window %))
+
 (defn params->str [params]
   (if-not params
     ""
     (str "?" (->> params
-                  (map (fn [[k v]] (str (name k) "=" v)))
+                  (map (fn [[k v]]
+                         (str (url-encode (name k)) "=" (url-encode v))))
                   (interpose "&")
                   (apply str)))))
 
