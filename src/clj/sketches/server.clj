@@ -18,14 +18,13 @@
       (s/split-lines)))
 
 (defn get-file-list [dir]
-  (->> (read-index-file dir)
-       (map #(str dir "/" %))
-       (map (comp io/file io/resource))
-       (filter #(.isFile %))
-       (map (comp #(str dir "/" %)
-                  last
-                  #(s/split % #"/")
-                  str))))
+  (->>
+   (read-index-file dir)
+   (map #(str dir "/" %)) 
+   ;;(filter #(.isFile %))
+   (map (comp #(str dir "/" %)
+              last
+              #(s/split % #"/")))))
 
 (defn jpeg-response [image-data]
   (-> image-data
