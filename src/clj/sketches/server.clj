@@ -34,7 +34,6 @@
 
 (defn serve-img [path width] 
   (-> (io/resource path)
-      io/file
       i/read-img
       (i/scale-down [(Integer. width) (Integer. width)]) 
       i/img->byte-array      
