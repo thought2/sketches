@@ -10,23 +10,27 @@
     [wrap-transit-params
      wrap-transit-response
      wrap-transit-body]]
-   [ring.util.response :refer [response not-found]]))
+   [ring.util.response :as rsp :refer [response not-found content-type]]))
+
+(defn read-index-file [dir]
+  (-> (io/resource (str dir "/.index.txt"))
+      io/file slurp 
+      (s/split-lines)))
 
 (defn get-file-list [dir]
-  (let [root (str (io/resource ""))] 
-    (->> (io/resource dir)
-         io/file
-         .listFiles
-         (filter #(.isFile %))
-         (map (comp #(str dir "/" %)
-                    last
-                    #(s/split % #"/")
-                    str)))))
+  (->> (read-index-file dir)
+       (map #(str dir "/" %))
+       (map (comp io/file io/resource))
+       (filter #(.isFile %))
+       (map (comp #(str dir "/" %)
+                  last
+                  #(s/split % #"/")
+                  str))))
 
 (defn jpeg-response [image-data]
   (-> image-data
-      (ring.util.response/response)
-      (ring.util.response/content-type "image/jpeg")))
+      response
+      (content-type "image/jpeg")))
 
 (defn serve-img [path width] 
   (-> (io/resource path)
