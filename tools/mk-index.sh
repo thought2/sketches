@@ -1,5 +1,5 @@
 dir=$1
-file=.index.txt
+file=index.txt
 
 cd $dir;
 for i in *; do echo $i >> $file; done;

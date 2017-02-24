@@ -13,7 +13,7 @@
    [ring.util.response :as rsp :refer [response not-found content-type]]))
 
 (defn read-index-file [dir]
-  (-> (io/resource (str dir "/.index.txt"))
+  (-> (io/resource (str dir "/index.txt"))
       io/file slurp 
       (s/split-lines)))
 
