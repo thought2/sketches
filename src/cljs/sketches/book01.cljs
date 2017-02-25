@@ -1,5 +1,5 @@
 (ns sketches.book01
-  (:require
+  (:require 
    [clojure.core.matrix :refer [add sub mul div]]
    [sketches.utils :as u]
    [sketches.global :as g]
@@ -10,24 +10,46 @@
 ;; sketch01 --------------------------------------------------------------------
 
 
-(defn Canvas [{:keys [width height draw]}]
-  (let [dom-node (r/atom nil)]
+(defn Canvas [{:keys [width height draw on-resize anim?]}]
+  (let [dom-node (r/atom nil)
+        running (r/atom false)
+        size (r/atom nil)
+        get-size #(some-> @dom-node u/get-real-size)]
+    
     (r/create-class
      {:component-did-mount
       (fn [this]
-        (reset! dom-node (r/dom-node this)))
+        (let [cnv (r/dom-node this)]
+          (reset! dom-node cnv)
+          (reset! running true)
+          (when anim?
+            (u/req-anim (fn anim [t] 
+                          (draw cnv t)
+                          (when @running
+                            (u/req-anim anim)))))))
 
       :component-did-update
       (fn []
-        (draw @dom-node))
+        (let [d @dom-node
+              size' (u/get-real-size d)]
+          (when (not= size' @size)
+            (on-resize d))
+          (reset! size size')))
+
+      :component-will-unmount
+      (fn []
+        (reset! running false))
       
       :reagent-render
       (fn []
+        (u/log "REN")
         @g/window-size
-        [:canvas (merge {:style {:width width :height height}}
-                        (when-let [d @dom-node]
-                          {:width (.-clientWidth d)
-                           :height (.-clientHeight d)}))])})))
+        [:canvas (merge {:style {:width width
+                                 :height height}}
+                        (when-let [size (get-size)] 
+                          {:width (size 0)
+                           :height (size 1)}))])})))
+
 
 (defn best-distrib [n size aspect]
   (let [get-dist (comp Math/abs -)
@@ -51,7 +73,11 @@
          (map :result)
          first)))
 
-(defonce state01 (r/atom {:imgs nil}))
+(defonce state01 (r/atom {:imgs nil
+                          :tiles nil
+                          :cnv-size nil}))
+
+
 
 (defn sketch01 []
   (let [dir "imgs/monopoly"
@@ -73,28 +99,54 @@
                        :method :post
                        :params {:dir dir}}) 
               (p/then #(p/all (map load-img %)))
-              (p/then #(swap! state01 assoc :imgs (cycle %))) 
-              (p/catch #(u/log (clj->js %)))))
+              (p/then #(swap! state01 assoc :imgs %)) 
+              (p/catch #(u/log (clj->js %)))))        
+
+        mk-tiles
+        (fn [tiles-cnt size imgs] 
+          (let [steps (u/cart (mapv range tiles-cnt))
+                tile-size (div size tiles-cnt)]
+            (map (fn [step img]
+                   (let [pos (mul step tile-size)]
+                     {:frame [pos tile-size]
+                      :img img}))
+                 steps imgs)))
+
+        init-tiles
+        (fn []
+          (let [{:keys [cnv-size imgs]} @state01] 
+            (swap! state01 assoc :tiles
+                   (-> (best-distrib n cnv-size aspect)
+                       (mk-tiles cnv-size imgs)))))
         
         draw
-        (fn [canvas]
-          (let [ctx (u/ctx2d canvas)
-                size (u/get-size canvas)
-                tiles (best-distrib n size 1)
-                _ (u/log2 tiles)
-                {:keys [imgs]} @state01
-                tile-size (div size tiles)]
-            (when imgs
-              (doseq [n-x (range (tiles 0))
-                      n-y (range (tiles 1))
-                      :let [n [n-x n-y]
-                            pos (mul n tile-size)
-                            img (->> n (add 1) (apply *) (nth imgs))]]
+        (fn [canvas t]          
+          (let [{:keys [tiles cnv-size imgs]} @state01
+                ctx (u/ctx2d canvas)]
+            (u/log2 cnv-size)
+            (when tiles
+              (doseq [{:keys [frame img]} tiles]
                 (u/draw-image ctx img
                               [[0 0] (u/get-size img)]
-                              [pos tile-size])))))]
+                              frame)))))
+        
+        resize
+        (fn [cnv]
+          (swap! state01 assoc :cnv-size (u/get-size cnv)))
+        
+        init
+        (fn []
+          (load)
+          (add-watch state01 :watch
+                     (fn [_ _ old-st new-st]
+                       (let [ks [:imgs :cnv-size]
+                             changed? #(not= (old-st %) (new-st %))]
+                         (when (and (some changed? ks)
+                                    (every? new-st ks))
+                           (init-tiles))))))]
 
-    (load)
+
+    (init)
 
     (fn []
       (let [{:keys [imgs time]} @state01
@@ -105,10 +157,13 @@
                        :max-width (max-size 0)
                        :max-height (max-size 1)
                        :background-color "white"}}
-         (when imgs
-           [Canvas {:width "100%" 
-                    :height "100%"
-                    :draw draw}])]))))
+         (u/log (clj->js @state01))
+         [Canvas {:width "100%" 
+                  :height "100%"
+                  ;;:draw draw
+                  :on-resize (fn [c] (resize c) (draw c 0))
+                  :anim? false
+                  }]]))))
 
 
 ;; sketches --------------------------------------------------------------------
