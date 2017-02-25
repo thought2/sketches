@@ -42,13 +42,22 @@
       
       :reagent-render
       (fn []
-        (u/log "REN")
         @g/window-size
         [:canvas (merge {:style {:width width
                                  :height height}}
                         (when-let [size (get-size)] 
                           {:width (size 0)
                            :height (size 1)}))])})))
+
+
+(defn Loading []
+  [:div {:style {:position :absolute
+                 :left 0 :right 0 :top 0 :bottom 0
+                 :margin :auto
+                 :width "100%" :height "15px"
+                 :font-family "Arial"
+                 :text-align :center}}
+   "Loading..."])
 
 
 (defn best-distrib [n size aspect]
@@ -212,14 +221,15 @@
     (init!)
 
     (fn []
-      (let [{:keys [imgs time]} @state01]
+      (let [{:keys [imgs time tiles]} @state01]
         [:div {:style {:height "80vh"
                        :position :relative
                        :margin "10vh"
                        :max-width (max-size 0)
                        :max-height (max-size 1)
                        :background-color "white"}}
-         (u/log "REND")
+         (when-not tiles
+           [Loading])
          [Canvas {:width "100%" 
                   :height "100%"
                   :anim anim!
