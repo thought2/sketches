@@ -100,7 +100,8 @@
                     (if (= i -1) nil
                         (if-let [rst (next (v-seqs i))]
                           (assoc v-seqs i rst)
-                          (recur (dec i) (assoc v-seqs i (v-original-seqs i)))))))]
+                          (recur (dec i)
+                                 (assoc v-seqs i (v-original-seqs i)))))))]
             (when v-seqs
               (cons (map first v-seqs)
                     (lazy-seq (step (increment v-seqs)))))))]
@@ -126,3 +127,9 @@
 
 (defn rand-between [[a e]]
   (+ a (rand-int (- e a))))
+
+
+(defn canvas->img [cnv]
+  (let [img (mk-elem "img")]
+    (aset img "src" (.toDataURL cnv))
+    img))

@@ -5,12 +5,13 @@
    [compojure.core :refer :all]
    [clojure.java.io :as io]
    [clojure.string :as s]
-   [ring.middleware.params :refer [wrap-params]]
-   [ring.middleware.transit :refer
-    [wrap-transit-params
-     wrap-transit-response
-     wrap-transit-body]]
-   [ring.util.response :as rsp :refer [response not-found content-type]]))
+   [ring.middleware.params
+    :refer [wrap-params]]
+   [ring.middleware.transit
+    :refer [wrap-transit-params wrap-transit-response wrap-transit-body]]
+   [ring.util.response :as rsp
+    :refer [response not-found content-type]]))
+
 
 (defn read-index-file [dir]
   (-> (io/resource (str dir "/index.txt"))
@@ -50,11 +51,7 @@
     (handler req)))
 
 (def handler
-  (-> main-routes
-      (logger)
-      #_(wrap-transit-body {:keywords? true :opts {}})
+  (-> main-routes 
       (wrap-transit-params)
       (wrap-transit-response)
-      wrap-params
-      #_(wrap-restful-format)
-      (logger)))
+      wrap-params))

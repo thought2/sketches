@@ -71,6 +71,13 @@
          first)))
 
 
+(defn mk-empty-img [size]
+  (let [cnv (u/mk-elem "canvas")
+        ctx (u/ctx2d cnv)]
+    (u/clear-rect ctx [[0 0] size])
+    (u/canvas->img cnv)))
+
+
 (defonce state01 (r/atom {:imgs nil
                           :tiles nil
                           :cnv-size nil}))
@@ -81,8 +88,9 @@
         max-size [1200 1200]
         n 25
         aspect 1
+        n-empties 8
         waiting-rng [0 20000]
-        fading-rng [1000 2000]
+        fading-rng [1000 4000]
 
         max-tile-size (div max-size
                            (best-distrib n max-size aspect))
@@ -172,8 +180,12 @@
           (-> (u/ajax {:uri "ls"
                        :method :post
                        :params {:dir dir}}) 
-              (p/then #(p/all (map load-img %)))
-              (p/then #(swap! state01 assoc :imgs %))))        
+              (p/then #(p/all (map load-img %))) 
+              (p/then (fn [imgs]
+                        (let [imgs' (-> (repeat n-empties (mk-empty-img [1 1]))
+                                        (concat imgs)
+                                        shuffle)]
+                          (swap! state01 assoc :imgs imgs'))))))        
 
         init-tiles!
         (fn []
