@@ -71,3 +71,6 @@
                    (aset "onload" #(resolve el))
                    (aset "onerror" reject)
                    (aset "src" url))))))
+
+(defn inner-size [el]
+  [(.-innerWidth el) (.-innerHeight el)])

@@ -21,7 +21,6 @@
   (->>
    (read-index-file dir)
    (map #(str dir "/" %)) 
-   ;;(filter #(.isFile %))
    (map (comp #(str dir "/" %)
               last
               #(s/split % #"/")))))
