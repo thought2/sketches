@@ -10,7 +10,7 @@
 ;; sketch01 --------------------------------------------------------------------
 
 
-(defn Canvas [{:keys [width height draw on-resize anim?]}]
+(defn Canvas [{:keys [width height anim on-resize anim?]}]
   (let [dom-node (r/atom nil)
         running (r/atom false)
         size (r/atom nil)
@@ -23,10 +23,10 @@
           (reset! dom-node cnv)
           (reset! running true)
           (when anim?
-            (u/req-anim (fn anim [t] 
-                          (draw cnv t)
+            (u/req-anim (fn anim-wrap [t] 
+                          (anim cnv t)
                           (when @running
-                            (u/req-anim anim)))))))
+                            (u/req-anim anim-wrap)))))))
 
       :component-did-update
       (fn []
@@ -52,19 +52,16 @@
 
 
 (defn best-distrib [n size aspect]
-  (let [get-dist (comp Math/abs -)
-        get-aspect #(apply / %)
+  (let [get-aspect #(apply / %)
 
         result
         (fn [x]
           (let [y (-> (/ n x) Math/ceil)
                 result [x y]
-
                 aspect' (get-aspect (div size result))
-                aspect-dist (get-dist aspect aspect')
-
+                aspect-dist (u/dist aspect aspect')
                 n' (* x y)
-                n-dist (/ (get-dist n n') n)]
+                n-dist (/ (u/dist n n') n)]
             {:dist (+ n-dist aspect-dist)
              :result result}))]
     
@@ -73,10 +70,10 @@
          (map :result)
          first)))
 
+
 (defonce state01 (r/atom {:imgs nil
                           :tiles nil
                           :cnv-size nil}))
-
 
 
 (defn sketch01 []
@@ -84,6 +81,8 @@
         max-size [1200 1200]
         n 25
         aspect 1
+        waiting-rng [0 20000]
+        fading-rng [1000 2000]
 
         max-tile-size (div max-size
                            (best-distrib n max-size aspect))
@@ -93,77 +92,127 @@
                             :width (max-tile-size 0)
                             :height (max-tile-size 1)})
         
-        load
-        (fn [] 
-          (-> (u/ajax {:uri "ls"
-                       :method :post
-                       :params {:dir dir}}) 
-              (p/then #(p/all (map load-img %)))
-              (p/then #(swap! state01 assoc :imgs %)) 
-              (p/catch #(u/log (clj->js %)))))        
+        waiting->fading
+        (fn [{:keys [frame img]} t]
+          {:state :fading
+           :frame frame
+           :img1 img
+           :img2 (rand-nth (@state01 :imgs))
+           :start t
+           :end (+ t (u/rand-between fading-rng))})
 
+        fading->waiting
+        (fn [{:keys [frame img2]} t]
+          {:state :waiting
+           :frame frame
+           :img img2
+           :end (+ t (u/rand-between waiting-rng))})
+        
         mk-tiles
         (fn [tiles-cnt size imgs] 
           (let [steps (u/cart (mapv range tiles-cnt))
                 tile-size (div size tiles-cnt)]
             (map (fn [step img]
                    (let [pos (mul step tile-size)]
-                     {:frame [pos tile-size]
-                      :img img}))
-                 steps imgs)))
+                     (fading->waiting {:frame [pos tile-size]
+                                       :img2 img}
+                                      0)))
+                 steps imgs)))        
 
-        init-tiles
+        draw-waiting
+        (fn [ctx tile]
+          (let [{:keys [img frame]} tile]
+            (u/draw-image ctx img
+                          [[0 0] (u/get-size img)]
+                          frame)))
+
+        draw-fading
+        (fn [ctx tile t]
+          (let [{:keys [img1 img2 frame start end]} tile 
+                perc (u/clamp [start end] t)
+                draw-alpha (fn [img perc]
+                             (u/global-alpha ctx perc)
+                             (u/draw-image ctx img
+                                           [[0 0] (u/get-size img)]
+                                           frame))]
+            (draw-alpha img1 (- 1 perc))
+            (draw-alpha img2 perc)
+            (u/global-alpha ctx 1)))
+        
+        draw
+        (fn [new-st cnv t]
+          (let [{:keys [tiles cnv-size imgs]} new-st
+                ctx (u/ctx2d cnv)
+                size (u/get-size cnv)]
+            (u/clear-rect ctx [[0 0] size]) 
+            (when tiles
+              (doseq [{:keys [state] :as tile} tiles]
+                (condp = state
+                  :waiting (draw-waiting ctx tile)
+                  :fading (draw-fading ctx tile t))))))
+        
+        update-tiles
+        (fn [t tiles]
+          (for [{:keys [state imgs start end] :as tile} tiles]
+            (condp = state
+              :waiting (if (< end t)
+                         (waiting->fading tile t)
+                         tile)
+              :fading (if (< end t)
+                        (fading->waiting tile t)
+                        tile))))
+        
+        anim!
+        (fn [canvas t]
+          (let [new-st (swap! state01 update :tiles #(update-tiles t %))]
+            (draw new-st canvas t)))
+
+        load!
+        (fn [] 
+          (-> (u/ajax {:uri "ls"
+                       :method :post
+                       :params {:dir dir}}) 
+              (p/then #(p/all (map load-img %)))
+              (p/then #(swap! state01 assoc :imgs %))))        
+
+        init-tiles!
         (fn []
           (let [{:keys [cnv-size imgs]} @state01] 
             (swap! state01 assoc :tiles
                    (-> (best-distrib n cnv-size aspect)
                        (mk-tiles cnv-size imgs)))))
         
-        draw
-        (fn [canvas t]          
-          (let [{:keys [tiles cnv-size imgs]} @state01
-                ctx (u/ctx2d canvas)]
-            (u/log2 cnv-size)
-            (when tiles
-              (doseq [{:keys [frame img]} tiles]
-                (u/draw-image ctx img
-                              [[0 0] (u/get-size img)]
-                              frame)))))
-        
-        resize
+        resize!
         (fn [cnv]
           (swap! state01 assoc :cnv-size (u/get-size cnv)))
         
-        init
+        init!
         (fn []
-          (load)
+          (load!)
           (add-watch state01 :watch
                      (fn [_ _ old-st new-st]
                        (let [ks [:imgs :cnv-size]
                              changed? #(not= (old-st %) (new-st %))]
                          (when (and (some changed? ks)
                                     (every? new-st ks))
-                           (init-tiles))))))]
+                           (init-tiles!))))))]
 
-
-    (init)
+    (init!)
 
     (fn []
-      (let [{:keys [imgs time]} @state01
-            max (mul )]
+      (let [{:keys [imgs time]} @state01]
         [:div {:style {:height "80vh"
                        :position :relative
                        :margin "10vh"
                        :max-width (max-size 0)
                        :max-height (max-size 1)
                        :background-color "white"}}
-         (u/log (clj->js @state01))
+         (u/log "REND")
          [Canvas {:width "100%" 
                   :height "100%"
-                  ;;:draw draw
-                  :on-resize (fn [c] (resize c) (draw c 0))
-                  :anim? false
-                  }]]))))
+                  :anim anim!
+                  :on-resize resize!
+                  :anim? true}]]))))
 
 
 ;; sketches --------------------------------------------------------------------

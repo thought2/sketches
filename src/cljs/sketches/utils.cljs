@@ -20,18 +20,23 @@
 (defn log [& xs]
   (apply js/console.log xs))
 
+
 (defn log2 [& xs]
   (apply js/console.log (map prn-str xs)))
+
 
 (defn get-real-size [el]
   (let [bb (.getBoundingClientRect el)]
     [(int (.-width bb)) (int (.-height bb))]))
 
+
 (defn ctx2d [el]
   (.getContext el "2d"))
 
+
 (defn req-anim [f]
   (.requestAnimationFrame js/window f))
+
 
 (defn draw-image
   ([ctx img]
@@ -45,13 +50,17 @@
          [[e f] [g h]] target-frame] 
      (.drawImage ctx img a b c d e f g h))))
 
+
 (defn get-size [x]
   [(.-width x) (.-height x)])
+
 
 (defn mk-elem [name]
   (.createElement js/document name))
 
+
 (def url-encode #(.encodeURIComponent js/window %))
+
 
 (defn params->str [params]
   (if-not params
@@ -62,6 +71,7 @@
                   (interpose "&")
                   (apply str)))))
 
+
 (defn load-img [url & [params]]
   (let [el (mk-elem "img")
         url (str url (params->str params))]
@@ -71,6 +81,7 @@
                    (aset "onload" #(resolve el))
                    (aset "onerror" reject)
                    (aset "src" url))))))
+
 
 (defn inner-size [el]
   [(.-innerWidth el) (.-innerHeight el)])
@@ -95,3 +106,23 @@
                     (lazy-seq (step (increment v-seqs)))))))]
     (when (every? seq seqs)
       (lazy-seq (step v-original-seqs)))))
+
+
+(defn clear-rect [ctx [[x y] [w h]]]
+  (.clearRect ctx x y w h))
+
+
+(defn clamp [[a e] pt]
+  (/ (- pt a)
+     (- e a)))
+
+
+(defn global-alpha [ctx perc]
+  (set! (.-globalAlpha ctx) perc))
+
+
+(def dist (comp Math/abs -))
+
+
+(defn rand-between [[a e]]
+  (+ a (rand-int (- e a))))
