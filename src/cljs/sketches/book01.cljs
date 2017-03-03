@@ -50,14 +50,14 @@
                            :height (size 1)}))])})))
 
 
-(defn Loading []
+(defn Message [childs]
   [:div {:style {:position :absolute
                  :left 0 :right 0 :top 0 :bottom 0
                  :margin :auto
                  :width "100%" :height "15px"
                  :font-family "Arial"
                  :text-align :center}}
-   "Loading..."])
+   childs])
 
 
 (defn best-distrib [n size aspect]
@@ -100,6 +100,8 @@
         n-empties 8
         waiting-rng [0 20000]
         fading-rng [1000 4000]
+
+        swap-s! (partial swap! state01)
 
         max-tile-size (div max-size
                            (best-distrib n max-size aspect))
@@ -185,7 +187,8 @@
             (draw new-st canvas t)))
 
         load!
-        (fn [] 
+        (fn []
+          (swap-s! assoc :mode :loading)
           (-> (u/ajax {:uri "ls"
                        :method :post
                        :params {:dir dir}}) 
@@ -194,7 +197,9 @@
                         (let [imgs' (-> (repeat n-empties (mk-empty-img [1 1]))
                                         (concat imgs)
                                         shuffle)]
-                          (swap! state01 assoc :imgs imgs'))))))        
+                          (swap! state01 assoc
+                                 :mode :running
+                                 :imgs imgs'))))))        
 
         init-tiles!
         (fn []
@@ -208,8 +213,8 @@
           (swap! state01 assoc :cnv-size (u/get-size cnv)))
         
         init!
-        (fn []
-          (load!)
+        (fn []           
+          (swap-s! assoc :mode :init)
           (add-watch state01 :watch
                      (fn [_ _ old-st new-st]
                        (let [ks [:imgs :cnv-size]
@@ -221,20 +226,28 @@
     (init!)
 
     (fn []
-      (let [{:keys [imgs time tiles]} @state01]
+      (let [{:keys [imgs time tiles mode]} @state01]
         [:div {:style {:height "80vh"
                        :position :relative
                        :margin "10vh"
                        :max-width (max-size 0)
                        :max-height (max-size 1)
                        :background-color "white"}}
-         (when-not tiles
-           [Loading])
-         [Canvas {:width "100%" 
-                  :height "100%"
-                  :anim anim!
-                  :on-resize resize!
-                  :anim? true}]]))))
+         (condp = mode
+           :init [Message
+                  [:a {:style {:text-decoration :underline
+                               :color :blue
+                               :cursor :pointer}
+                       :on-click #(load!)}
+                   "click to start."]]
+           :loading [Message
+                     "Loading..."]
+           :running [Canvas {:width "100%" 
+                             :height "100%"
+                             :anim anim!
+                             :on-resize resize!
+                             :anim? true}]
+           nil)]))))
 
 
 ;; sketches --------------------------------------------------------------------
